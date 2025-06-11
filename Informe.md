@@ -28,14 +28,14 @@ A continuación, se presenta el pinout de la placa:
 
 Para poder realizar lo pedido, debimos seguir los siguientes pasos:
 
-1. A través del slot microSD, se le carga una imagen de sistema operativo a la placa. Para la elección de este, se tuvo en cuenta la antigüedad de la placa.
-2. Se conecta una fuente de 5V a los pines 15 y 16 de la placa y una placa wifi al puerto ethernet.
-3. En una computadora, se establece una conexión por SSH con la Raspberry Pi. Para esto, se utilizaron los siguientes comandos:
+1. A través del slot microSD, se le carga una imagen de sistema operativo a la placa.
+2. Se conecta una fuente de 3.3V a los pines 15 y 16 de la placa para alimentarla y una placa wifi al puerto ethernet.
+3. En una computadora conectada a la misma red wifi, se establece una conexión por SSH con la Raspberry Pi. Para esto, se utilizaron los siguientes comandos:
     1. `hostname -I` para encontrar la dirección IP de la computadora.
     2. `nmap -sn 192.168.1.0/24` para ver todos los dispositivos conectados a la red en ese rango. En nuestro caso, era la 192.168.1.100.
     3. `touch /media/$USER/boot/ssh` para crear un archivo vacío "ssh".
     4. `ssh usuario@<IP_DE_LA_PI>` para establecer la conexión.
-4. Se copia a la Raspberry Pi el archivo python.
+4. Se copia a la Raspberry Pi el archivo python mediante `scp`.
 5. A través de la conexión ssh, se ejecuta el archivo python.
 
 ## Conclusión
