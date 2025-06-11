@@ -1,38 +1,51 @@
-import socket
-import time
 import matplotlib.pyplot as plt
+import numpy as np
 
-SOCKET_PATH = "/tmp/tmp-gpio.sock"  # Debe coincidir con el usado en QEMU
+SAMPLE_RATE = 20000  # 20 kHz
+ACQ_TIME_SEC = 1
+N_SAMPLES = SAMPLE_RATE * ACQ_TIME_SEC
 
-def read_gpio(pin):
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-        s.connect(SOCKET_PATH)
-        # El protocolo depende de cómo QEMU expone los GPIO
-        # Ejemplo ficticio:
-        s.sendall(f"read {pin}\n".encode())
-        data = s.recv(1024)
-        return int(data.decode().strip())
+#
+# Cómo se usa desde el espacio de usuario?
+# 1. Seleccionar la señal y disparar la adquisición
+# Para seleccionar la señal 0 (GPIO 15) y disparar la adquisición:
+#       echo 0 | sudo tee /dev/cdd_TP5
+#
+# Para seleccionar la señal 1 (GPIO 16) y disparar la adquisición:
+#       echo 1 | sudo tee /dev/cdd_TP5
+#
+# Cada vez que escribes "0" o "1" en el device, el driver realiza una 
+# adquisición de 1 segundo a 20 kHz de la señal seleccionada.
+#
+# 2. Leer los datos adquiridos
+# Para leer los datos adquiridos, puedes usar el comando:
+#       cat /dev/cdd_TP5 > samples.txt
+# 
+# Esto guardará los datos en un archivo llamado "samples.txt".
+#
+# 3. Para verificar cual fue la señal seleccionada, puedes leer el mensaje de log del driver:
+#       dmesg | tail
+#
+# Esto mostrará el último mensaje del driver, que indica la señal seleccionada.
+# 
+# Asegúrate de que el driver esté cargado y funcionando correctamente antes de ejecutar este script.
+#
 
-# Ejemplo de lectura y graficado simple
-pins = [17, 18]  # GPIOs a leer
+# Lee los datos del archivo generado por el driver
+with open("samples.txt", "r") as f:
+    data = f.read().strip()
+    # Si los datos están sin separadores:
+    values = np.array([int(c) for c in data[:N_SAMPLES]])
 
-selected_pin = pins[0]  # Selecciona el pin a mostrar
+# Eje de tiempo
+t = np.arange(N_SAMPLES) / SAMPLE_RATE
 
-times = []
-values = []
-
-plt.ion()
-fig, ax = plt.subplots()
-
-for t in range(100):
-    value = read_gpio(selected_pin)
-    times.append(time.time())
-    values.append(value)
-    ax.clear()
-    ax.plot(times, values)
-    ax.set_xlabel("Tiempo")
-    ax.set_ylabel(f"GPIO {selected_pin}")
-    plt.pause(0.1)
-
-plt.ioff()
+# Graficar
+plt.figure(figsize=(10, 4))
+plt.plot(t, values, drawstyle='steps-post')
+plt.xlabel("Tiempo (s)")
+plt.ylabel("Nivel digital")
+plt.title("Señal digital muestreada (20 kHz, 1 segundo)")
+plt.ylim(-0.2, 1.2)
+plt.grid(True)
 plt.show()
