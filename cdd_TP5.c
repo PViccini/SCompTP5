@@ -14,8 +14,8 @@
 
 #define DEVICE_NAME "cdd_TP5"
 #define CLASS_NAME  "cdd_TP5_class"
-#define GPIO22 17   // quedo asi porque bueno pasason cosas
-#define GPIO23 18
+#define GPIO22 22   // PIN 15
+#define GPIO23 23   // PIN 16
 #define SAMPLE_RATE 20000 // 20kHz
 #define ACQ_TIME_SEC 1
 #define N_SAMPLES (SAMPLE_RATE * ACQ_TIME_SEC)
@@ -92,10 +92,10 @@ static ssize_t mi_cdd_write(struct file *file, const char __user *buf, size_t co
     mutex_lock(&signal_mutex);
     if (kbuf[0] == '0') {
         selected_signal = 0;
-        printk(KERN_INFO "Configured Signal 0: PIN %d -> Sampled: 1 second\n", GPIO22);
+        printk(KERN_INFO "Configured Signal 0: Pin 15 (GPIO %d) -> Sampled: 1 second\n", GPIO22);
     } else if (kbuf[0] == '1') {
         selected_signal = 1;
-        printk(KERN_INFO "Configured Signal 1: PIN %d -> Sampled: 1 second\n", GPIO23);
+        printk(KERN_INFO "Configured Signal 1: Pin 16 (GPIO %d) -> Sampled: 1 second\n", GPIO23);
     } else {
         mutex_unlock(&signal_mutex);
         return -EINVAL;
@@ -171,5 +171,5 @@ module_init(mi_cdd_init);
 module_exit(mi_cdd_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Tu Nombre");
+MODULE_AUTHOR("Franco, Juli y Pato");
 MODULE_DESCRIPTION("CDD para sensar una señal seleccionada a alta velocidad durante 1 segundo");

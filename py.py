@@ -8,10 +8,10 @@ N_SAMPLES = SAMPLE_RATE * ACQ_TIME_SEC
 #
 # Cómo se usa desde el espacio de usuario?
 # 1. Seleccionar la señal y disparar la adquisición
-# Para seleccionar la señal 0 (GPIO 15) y disparar la adquisición:
+# Para seleccionar la señal 0 (Pin15 - GPIO 22) y disparar la adquisición:
 #       echo 0 | sudo tee /dev/cdd_TP5
 #
-# Para seleccionar la señal 1 (GPIO 16) y disparar la adquisición:
+# Para seleccionar la señal 1 (Pin16 - GPIO 23) y disparar la adquisición:
 #       echo 1 | sudo tee /dev/cdd_TP5
 #
 # Cada vez que escribes "0" o "1" en el device, el driver realiza una 
