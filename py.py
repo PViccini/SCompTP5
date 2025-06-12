@@ -18,10 +18,10 @@ N_SAMPLES = SAMPLE_RATE * ACQ_TIME_SEC
 # Ahora ya estaria listo para usar el driver desde el espacio de usuario.
 # Cómo se usa este script desde el espacio de usuario?
 # 1. Seleccionar la señal y disparar la adquisición
-# Para seleccionar la señal 0 (Pin15 - GPIO 22) y disparar la adquisición:
-#       echo 0 | sudo tee /dev/cdd_TP5
+# Para seleccionar la señal 0 (Pin18 - GPIO 24) y disparar la adquisición:
+#       echo 0 | sudo tee /dev/cdd_TP5      (o, si se cuenta con los permisos: echo 0 > /dev/cdd_TP5)
 #
-# Para seleccionar la señal 1 (Pin16 - GPIO 23) y disparar la adquisición:
+# Para seleccionar la señal 1 (Pin22 - GPIO 25) y disparar la adquisición:
 #       echo 1 | sudo tee /dev/cdd_TP5
 #
 # Cada vez que escribes "0" o "1" en el device, el driver realiza una 
@@ -39,7 +39,10 @@ N_SAMPLES = SAMPLE_RATE * ACQ_TIME_SEC
 # Esto mostrará el último mensaje del driver, que indica la señal seleccionada.
 # 
 # Asegúrate de que el driver esté cargado y funcionando correctamente antes de ejecutar este script.
+# 4. Activa el venv con la librería matplotlib instalada:
+#       source .venv/bin/activate
 #
+# 5. Ejecuta este script.
 
 # Lee los datos del archivo generado por el driver
 with open("samples.txt", "r") as f:

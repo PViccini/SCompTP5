@@ -9,13 +9,11 @@
 #include <linux/delay.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
-// #include <linux/gpio/consumer.h> // Para GPIOs en dispositivos modernos
-
 
 #define DEVICE_NAME "cdd_TP5"
 #define CLASS_NAME  "cdd_TP5_class"
-#define GPIO22 22   // PIN 15
-#define GPIO23 23   // PIN 16
+#define GPIO24 24   // PIN 18 -> echo 0 | sudo tee /dev/cdd_TP5
+#define GPIO25 25   // PIN 22 -> echo 1 | sudo tee /dev/cdd_TP5
 #define SAMPLE_RATE 20000 // 20kHz
 #define ACQ_TIME_SEC 1
 #define N_SAMPLES (SAMPLE_RATE * ACQ_TIME_SEC)
@@ -26,21 +24,24 @@ static struct device* mi_cdd_device = NULL;
 
 static int selected_signal = 0; // 0 o 1
 static int *sample_buffer = NULL;
-// static size_t sample_count = 0;
 static int acq_ready = 0;
 static DEFINE_MUTEX(signal_mutex);
 
 static int acquire_signal(int gpio)
 {
     size_t i;
-    ktime_t start, interval;
-    s64 elapsed;
-    interval = ktime_set(0, 1000000000 / SAMPLE_RATE); // nanosegundos entre muestras
+    ktime_t start, target;
+    s64 interval_ns = 1000000000LL / SAMPLE_RATE; // nanosegundos entre muestras
+
     start = ktime_get();
     for (i = 0; i < N_SAMPLES; i++) {
         sample_buffer[i] = gpio_get_value(gpio);
+        if ((i%90 == 0) && (i<1000) ) // Solo los primeros algunos para no saturar el log
+            printk(KERN_INFO "sample[%zu]=%d\n", i, sample_buffer[i]);
         // Espera activa para mantener la tasa de muestreo
-        while ((elapsed = ktime_to_ns(ktime_sub(ktime_get(), start))) < (i+1) * (1000000000 / SAMPLE_RATE)) cpu_relax();
+        target = ktime_add_ns(start, interval_ns * (i + 1));
+        while (ktime_compare(ktime_get(), target) < 0)
+            cpu_relax();
     }
     return 0;
 }
@@ -55,15 +56,14 @@ static ssize_t mi_cdd_read(struct file *file, char __user *buf, size_t count, lo
         mutex_unlock(&signal_mutex);
         return 0; // No hay datos listos
     }
-    // Calcula el tamaño necesario para el buffer de salida
-    kbuf = kmalloc(N_SAMPLES * 2, GFP_KERNEL); // "0\n" o "1\n" por muestra
+    kbuf = kmalloc(N_SAMPLES, GFP_KERNEL);
     if (!kbuf) {
         mutex_unlock(&signal_mutex);
         return -ENOMEM;
     }
     for (i = 0; i < N_SAMPLES; i++)
-        len += snprintf(kbuf + len, 2, "%d", sample_buffer[i]);
-    // Devuelve los datos al usuario
+        kbuf[i] = sample_buffer[i] ? '1' : '0';
+    len = N_SAMPLES;
     if (*ppos >= len) {
         kfree(kbuf);
         mutex_unlock(&signal_mutex);
@@ -90,20 +90,23 @@ static ssize_t mi_cdd_write(struct file *file, const char __user *buf, size_t co
     if (copy_from_user(kbuf, buf, count)) return -EFAULT;
     kbuf[count] = '\0';
     mutex_lock(&signal_mutex);
+    printk(KERN_INFO "mi_cdd_write: recibido %s\n", kbuf);
     if (kbuf[0] == '0') {
         selected_signal = 0;
-        printk(KERN_INFO "Configured Signal 0: Pin 15 (GPIO %d) -> Sampled: 1 second\n", GPIO22);
+        printk(KERN_INFO "mi_cdd_write: seleccionada señal 0 -> GPIO24\n");
     } else if (kbuf[0] == '1') {
         selected_signal = 1;
-        printk(KERN_INFO "Configured Signal 1: Pin 16 (GPIO %d) -> Sampled: 1 second\n", GPIO23);
+        printk(KERN_INFO "mi_cdd_write: seleccionada señal 1 -> GPIO25 \n");
     } else {
+        printk(KERN_INFO "mi_cdd_write: valor inválido\n");
         mutex_unlock(&signal_mutex);
         return -EINVAL;
     }
-    // Dispara adquisición
     acq_ready = 0;
-    gpio = (selected_signal == 0) ? GPIO22 : GPIO23;
+    printk(KERN_INFO "mi_cdd_write: iniciando adquisición\n");
+    gpio = (selected_signal == 0) ? GPIO24 : GPIO25;
     acquire_signal(gpio);
+    printk(KERN_INFO "mi_cdd_write: adquisición terminada\n");
     acq_ready = 1;
     mutex_unlock(&signal_mutex);
     return count;
@@ -116,22 +119,26 @@ static struct file_operations fops = {
 };
 
 static int __init mi_cdd_init(void) {
-    
-    gpio_direction_input(GPIO22);
-    gpio_direction_input(GPIO23);
+    if (!gpio_is_valid(GPIO24)) {
+        printk(KERN_ERR "GPIO %d no es válido\n", GPIO24);
+        return -EINVAL;
+    }
+    if (!gpio_is_valid(GPIO25)) {
+        printk(KERN_ERR "GPIO %d no es válido\n", GPIO25);
+        return -EINVAL;
+    }
+    gpio_direction_input(GPIO24);
+    gpio_direction_input(GPIO25);
+    printk(KERN_INFO "Configurados GPIO %d y %d como entradas\n", GPIO24, GPIO25);
 
     sample_buffer = kmalloc_array(N_SAMPLES, sizeof(int), GFP_KERNEL);
     if (!sample_buffer) {
-        gpio_free(GPIO22);
-        gpio_free(GPIO23);
         return -ENOMEM;
     }
 
     major = register_chrdev(0, DEVICE_NAME, &fops);
     if (major < 0) {
         kfree(sample_buffer);
-        gpio_free(GPIO22);
-        gpio_free(GPIO23);
         printk(KERN_ERR "No se pudo registrar el device\n");
         return major;
     }
@@ -139,8 +146,6 @@ static int __init mi_cdd_init(void) {
     if (IS_ERR(mi_cdd_class)) {
         unregister_chrdev(major, DEVICE_NAME);
         kfree(sample_buffer);
-        gpio_free(GPIO22);
-        gpio_free(GPIO23);
         return PTR_ERR(mi_cdd_class);
     }
     mi_cdd_device = device_create(mi_cdd_class, NULL, MKDEV(major, 0), NULL, DEVICE_NAME);
@@ -148,8 +153,6 @@ static int __init mi_cdd_init(void) {
         class_destroy(mi_cdd_class);
         unregister_chrdev(major, DEVICE_NAME);
         kfree(sample_buffer);
-        gpio_free(GPIO22);
-        gpio_free(GPIO23);
         return PTR_ERR(mi_cdd_device);
     }
     mutex_init(&signal_mutex);
@@ -162,8 +165,6 @@ static void __exit mi_cdd_exit(void) {
     class_destroy(mi_cdd_class);
     unregister_chrdev(major, DEVICE_NAME);
     kfree(sample_buffer);
-    gpio_free(GPIO22);
-    gpio_free(GPIO23);
     printk(KERN_INFO "mi_cdd: driver descargado\n");
 }
 
