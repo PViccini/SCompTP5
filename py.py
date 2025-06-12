@@ -6,7 +6,17 @@ ACQ_TIME_SEC = 1
 N_SAMPLES = SAMPLE_RATE * ACQ_TIME_SEC
 
 #
-# Cómo se usa desde el espacio de usuario?
+# Primero cargo el driver del kernel con el comando:
+#   sudo insmod *ubicacionDelDrive*/cdd_TP5.ko
+#
+# Verifico que el driver se haya cargado correctamente con:
+#   lsmod | grep cdd_TP5
+#
+# Este driver permite adquirir señales digitales de dos pines GPIO (Pin15 y Pin16)
+# de la Raspberry Pi a una tasa de muestreo de 20 kHz durante 1 segundo.
+#
+# Ahora ya estaria listo para usar el driver desde el espacio de usuario.
+# Cómo se usa este script desde el espacio de usuario?
 # 1. Seleccionar la señal y disparar la adquisición
 # Para seleccionar la señal 0 (Pin15 - GPIO 22) y disparar la adquisición:
 #       echo 0 | sudo tee /dev/cdd_TP5
@@ -19,7 +29,7 @@ N_SAMPLES = SAMPLE_RATE * ACQ_TIME_SEC
 #
 # 2. Leer los datos adquiridos
 # Para leer los datos adquiridos, puedes usar el comando:
-#       cat /dev/cdd_TP5 > samples.txt
+#       sudo cat /dev/cdd_TP5 | tee samples.txt > /dev/null
 # 
 # Esto guardará los datos en un archivo llamado "samples.txt".
 #
