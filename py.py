@@ -72,7 +72,6 @@ else:
 info = SIGNAL_MAP[selected_signal]
 pin = info["pin"]
 gpio = info["gpio"]
-gpio_kernel = info["gpio_kernel"]
 
 # Lee los datos del archivo generado por el driver
 with open("samples.txt", "r") as f:
