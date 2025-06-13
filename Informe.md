@@ -1,42 +1,69 @@
-# Trabajo Práctico N°5: Device drivers
+# Trabajo Práctico N°5: Device Drivers
 
-## Cátedra de Sistemas de Computación, FCEFyN, UNC. 2025
+## Cátedra de Sistemas de Computación, FCEFyN, UNC – 2025
 
-### Grupo: Los puntos flotantes
+**Grupo:** Los puntos flotantes  
+**Integrantes:** Julieta Bernaus, Franco Di Pasquo, Carlos Patricio Viccini  
+**Docente:** Javier Jorge
 
-### Alumnos: Bernaus, Julieta; Di Pasquo, Franco; Viccini, Carlos Patricio
-
-### Profesor: Jorge, Javier
+---
 
 ## Introducción
 
-Este trabajo trata acerca de los device drivers, es decir, el software que permite la interacción sistema operativo - periférico. A partir de este concepto, se debe crear un driver para el dispositivo Raspberry Pi, que permita manejar los IO.
+En este trabajo se aborda el desarrollo de un driver de dispositivo de carácter (CDD) para la plataforma Raspberry Pi, orientado a la adquisición de señales digitales a alta velocidad. El objetivo es comprender la interacción entre el espacio de usuario y el kernel de Linux, así como la manipulación eficiente de periféricos mediante drivers propios.
 
-## Desarrollo
+---
 
-### Consigna
+## Objetivos
 
-La consigna de este trabajo pide diseñar y construir un CDD que permita sensar dos señales externas con un periodo de UN segundo. Luego, una aplicación a nivel de usuario deberá leer UNA de las dos señales y graficarla en función del tiempo. La aplicación tambien debe poder indicarle al CDD cuál de las dos señales leer. Las correcciones de escalas de las mediciones, de ser necesario, se harán a nivel de usuario. Los gráficos de la señal deben indicar el tipo de señal que se está sensando, unidades en abcisas y tiempo en ordenadas. Cuando se cambie de señal el gráfico se debe "resetear" y acomodar a la nueva medición.
+- Implementar un driver de carácter capaz de sensar dos señales digitales externas durante un intervalo de un segundo.
+- Permitir la selección dinámica de la señal a sensar desde el espacio de usuario.
+- Desarrollar una aplicación en Python que lea y grafique la señal adquirida, mostrando información relevante sobre la adquisición.
 
-### Implementación
+---
 
-Para implementar este trabajo, decidimos utilizar una placa física Raspberry Pi 3 Model B.
+## Descripción del Hardware y Entorno
 
-A continuación, se presenta el pinout de la placa:
+Se utilizó una Raspberry Pi 3 Model B, con sistema operativo Linux actualizado (kernel 6.2+). La adquisición de señales se realiza sobre los pines físicos 18 (GPIO24) y 22 (GPIO25), configurados como entradas digitales. La comunicación con la placa se realizó mediante SSH sobre red local.
 
-![Pinout](./img/Raspberry-Pi-3-pinout.jpg)
+---
 
-Para poder realizar lo pedido, debimos seguir los siguientes pasos:
+## Implementación del Driver
 
-1. A través del slot microSD, se le carga una imagen de sistema operativo a la placa.
-2. Se conecta una fuente de 3.3V a los pines 15 y 16 de la placa para alimentarla y una placa wifi al puerto ethernet.
-3. En una computadora conectada a la misma red wifi, se establece una conexión por SSH con la Raspberry Pi. Para esto, se utilizaron los siguientes comandos:
-    1. `hostname -I` para encontrar la dirección IP de la computadora.
-    2. `nmap -sn 192.168.1.0/24` para ver todos los dispositivos conectados a la red en ese rango. En nuestro caso, era la 192.168.1.100.
-    3. `touch /media/$USER/boot/ssh` para crear un archivo vacío "ssh".
-    4. `ssh usuario@<IP_DE_LA_PI>` para establecer la conexión.
-4. Se copia a la Raspberry Pi el archivo python mediante `scp`.
-5. A través de la conexión ssh, se ejecuta el archivo python.
+El driver, implementado en C (`cdd_TP5.c`), utiliza la API GPIO moderna del kernel para acceder a los pines. Se registró un dispositivo de carácter en `/dev/cdd_TP5`, permitiendo operaciones de lectura y escritura desde el espacio de usuario.
 
-## Conclusión
+### Principales características:
+
+- **Selección de señal:** Mediante escritura de '0' o '1' en el dispositivo, el driver selecciona el GPIO a sensar.
+- **Adquisición de datos:** Al seleccionar la señal, el driver realiza una adquisición de 20.000 muestras en 1 segundo (20 kHz), almacenando los datos en un buffer interno.
+- **Lectura de datos:** El usuario puede leer el buffer completo como una secuencia de caracteres ('0' y '1'), representando el estado digital de la señal muestreada.
+- **Sincronización:** Se emplea un mutex para evitar condiciones de carrera durante la adquisición y lectura.
+
+## Pruebas y Resultados
+
+Se realizaron pruebas de adquisición utilizando la señal PWM generada por pwmConfig.py. El driver demostró adquirir correctamente las muestras a 20 kHz durante 1 segundo, sin pérdidas ni errores de sincronización. La visualización en py.py permitió analizar la forma de onda y validar la fidelidad de la adquisición.
+
+---
+
+## Conclusiones
+
+El desarrollo del driver de dispositivo permitió comprender en profundidad la interacción entre el hardware y el software en sistemas Linux. La Raspberry Pi demostró ser una plataforma versátil y potente para el desarrollo de proyectos de adquisición de datos y control.
+
+---
+
+## Anexos
+
+- Código fuente del driver: [`cdd_TP5.c`](./cdd_TP5.c).
+- Script de Python para adquisición y graficación: [`py.py`](./py.py).
+- Generador de señal PWM para pruebas: [pwmConfig.py](./pwmConfig.py).
+- Videos de las pruebas realizadas:[`configuracion_rpi_carge_del_cdd.mp4`](./video/configuracion_rpi_carga_del_cdd.mp4), [`generacion_de_muestras.mp4`](./video/generacion_de_muestras.mp4), [`muestreo_variando_frequencia.mp4`](./video/muestreo_variando_frecuencia.mp4).
+
+---
+
+## Referencias
+
+1. Documentación oficial de Raspberry Pi.
+2. Documentación del kernel de Linux.
+3. Tutoriales y guías sobre desarrollo de drivers en Linux.
+4. Material de cátedra y ejemplos provistos.
 
